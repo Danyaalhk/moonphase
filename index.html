@@ -307,14 +307,14 @@
         <rect x="55" y="85" width="410" height="212" fill="url(#skyGrad)"/>
         <g id="stars"></g>
         <g id="moonG">
-          <circle r="56" fill="url(#moonGrad)"/>
-          <circle cx="-14" cy="-8" r="9" fill="#8a6a2c" opacity="0.22"/>
-          <circle cx="12" cy="14" r="7" fill="#8a6a2c" opacity="0.2"/>
-          <circle cx="17" cy="-19" r="5" fill="#8a6a2c" opacity="0.18"/>
-          <circle cx="-9" cy="21" r="4.5" fill="#8a6a2c" opacity="0.18"/>
+          <circle r="70" fill="url(#moonGrad)"/>
+          <circle cx="-17.5" cy="-10" r="11" fill="#8a6a2c" opacity="0.22"/>
+          <circle cx="15" cy="17.5" r="8.8" fill="#8a6a2c" opacity="0.2"/>
+          <circle cx="21" cy="-24" r="6.3" fill="#8a6a2c" opacity="0.18"/>
+          <circle cx="-11" cy="26" r="5.6" fill="#8a6a2c" opacity="0.18"/>
         </g>
-        <circle cx="130" cy="304" r="76" fill="#0d1526" stroke="url(#goldGrad)" stroke-width="2"/>
-        <circle cx="390" cy="304" r="76" fill="#0d1526" stroke="url(#goldGrad)" stroke-width="2"/>
+        <circle cx="155" cy="310" r="90" fill="#0d1526" stroke="url(#goldGrad)" stroke-width="2"/>
+        <circle cx="365" cy="310" r="90" fill="#0d1526" stroke="url(#goldGrad)" stroke-width="2"/>
         <path d="M60 292 A200 200 0 0 1 460 292 Z" fill="none" stroke="#000" stroke-opacity="0.4" stroke-width="10"/>
       </g>
       <path d="M60 292 A200 200 0 0 1 460 292 Z" fill="none" stroke="url(#goldGrad)" stroke-width="3"/>
@@ -440,7 +440,7 @@
     guard++;
     var sx = 70 + rnd()*380, sy = 100 + rnd()*180;
     if (Math.hypot(sx-260, sy-292) > 188) continue;
-    if (Math.hypot(sx-130, sy-304) < 88 || Math.hypot(sx-390, sy-304) < 88) continue;
+    if (Math.hypot(sx-155, sy-310) < 102 || Math.hypot(sx-365, sy-310) < 102) continue;
     var node;
     if (rnd() < 0.72){
       node = el("path", {d: starPath(sx, sy, 3 + rnd()*4), fill: "#e8c777"}, starsG);
@@ -459,8 +459,8 @@
   function updateMoon(now){
     var md = moonData(now);
     var th = Math.PI * (1 - md.phase);
-    var mx = 260 + 130*Math.cos(th);
-    var my = 292 - 130*Math.sin(th);
+    var mx = 260 + 105*Math.cos(th);
+    var my = 292 - 105*Math.sin(th);
     moonG.setAttribute("transform", "translate(" + mx.toFixed(2) + " " + my.toFixed(2) + ")");
 
     document.getElementById("phaseName").textContent = phaseLabel(md.phase);
