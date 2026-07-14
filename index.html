@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#070b16">
+<meta name="description" content="Live local time with a sweeping seconds hand and a Patek 5712-style moonphase display, for setting a mechanical moonphase watch.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%20100%20100%27%3E%3Ctext%20y%3D%27.9em%27%20font-size%3D%2790%27%3E%F0%9F%8C%96%3C/text%3E%3C/svg%3E">
+<title>Moonphase Companion</title>
+<style>
+  :root{
+    --bg:#070b16;
+    --panel:#0d1526;
+    --dial-deep:#050a16;
+    --ink:#dfe4ee;
+    --dim:#8d96ab;
+    --gold:#d9b366;
+    --gold-bright:#ecd394;
+    --gold-deep:#96742f;
+    --hairline:rgba(217,179,102,.25);
+    --display:"Didot","Bodoni 72","Playfair Display",Georgia,serif;
+    --body:"Optima","Candara","Gill Sans","Segoe UI",system-ui,sans-serif;
+    --digits:system-ui,"Helvetica Neue",sans-serif;
+  }
+  html{background:var(--bg);}
+  body{
+    margin:0;
+    background:radial-gradient(120% 70% at 50% -10%, #111c38 0%, var(--bg) 60%) no-repeat var(--bg);
+    color:var(--ink);
+    font-family:var(--body);
+    -webkit-font-smoothing:antialiased;
+  }
+  main{
+    max-width:640px;
+    margin:0 auto;
+    padding:52px 20px 72px;
+    display:flex;
+    flex-direction:column;
+    gap:52px;
+  }
+
+  header{text-align:center;display:flex;flex-direction:column;gap:10px;}
+  .eyebrow{
+    font-size:.66rem;
+    letter-spacing:.32em;
+    text-transform:uppercase;
+    color:var(--gold);
+  }
+  h1{
+    margin:0;
+    font-family:var(--display);
+    font-weight:400;
+    font-size:clamp(2rem,6vw,2.7rem);
+    letter-spacing:.02em;
+    text-wrap:balance;
+  }
+  .tzline{font-size:.82rem;color:var(--dim);letter-spacing:.06em;}
+
+  section{display:flex;flex-direction:column;align-items:center;gap:22px;}
+  .section-head{
+    width:100%;
+    display:flex;
+    align-items:center;
+    gap:16px;
+    color:var(--gold);
+    font-size:.66rem;
+    letter-spacing:.32em;
+    text-transform:uppercase;
+    white-space:nowrap;
+  }
+  .section-head::before,.section-head::after{
+    content:"";
+    flex:1;
+    border-top:1px solid var(--hairline);
+  }
+
+  .toggle{display:flex;align-items:baseline;gap:14px;}
+  .toggle button{
+    appearance:none;
+    background:none;
+    border:none;
+    border-bottom:1px solid transparent;
+    padding:2px 1px;
+    color:var(--dim);
+    font-family:var(--body);
+    font-size:.72rem;
+    letter-spacing:.26em;
+    text-transform:uppercase;
+    cursor:pointer;
+  }
+  .toggle button.active{color:var(--gold-bright);border-bottom-color:var(--gold);}
+  .toggle button:focus-visible{outline:1px solid var(--gold);outline-offset:4px;}
+  .toggle .sep{color:var(--gold-deep);font-size:.72rem;}
+
+  #watchSvg{width:min(86vw,440px);height:auto;display:block;filter:drop-shadow(0 22px 44px rgba(0,0,0,.55));}
+  #moonSvg{width:min(92vw,520px);height:auto;display:block;filter:drop-shadow(0 18px 40px rgba(0,0,0,.5));}
+
+  .digital{display:flex;flex-direction:column;align-items:center;gap:4px;}
+  .digital .dateline{
+    font-size:.85rem;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--dim);
+  }
+  .digital .timeline{
+    font-family:var(--digits);
+    font-variant-numeric:tabular-nums;
+    font-weight:200;
+    font-size:clamp(2rem,7vw,2.8rem);
+    letter-spacing:.12em;
+    color:var(--ink);
+  }
+
+  .stats{
+    width:100%;
+    margin:0;
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:18px 12px;
+    text-align:center;
+  }
+  .stats>div{display:flex;flex-direction:column;gap:6px;}
+  .stats dt{
+    font-size:.6rem;
+    letter-spacing:.24em;
+    text-transform:uppercase;
+    color:var(--dim);
+  }
+  .stats dd{
+    margin:0;
+    font-family:var(--display);
+    font-size:1.3rem;
+    color:var(--gold-bright);
+    font-variant-numeric:tabular-nums;
+  }
+  .stats dd small{font-size:.85rem;color:var(--dim);font-family:var(--body);letter-spacing:.04em;}
+  @media (max-width:520px){.stats{grid-template-columns:repeat(2,1fr);}}
+
+  .setting{
+    max-width:46ch;
+    margin:0;
+    text-align:center;
+    font-size:.88rem;
+    line-height:1.75;
+    color:var(--dim);
+  }
+  .setting strong{color:var(--gold-bright);font-weight:600;}
+
+  footer{
+    text-align:center;
+    font-size:.7rem;
+    letter-spacing:.05em;
+    color:#5a6379;
+    line-height:1.7;
+  }
+
+  @media (prefers-reduced-motion: no-preference){
+    .twinkle{animation:twinkle 3.6s ease-in-out infinite;}
+    @keyframes twinkle{
+      0%,100%{opacity:var(--o,0.8);}
+      50%{opacity:calc(var(--o,0.8)*0.35);}
+    }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">Live &middot; Local time &amp; lunar phase</div>
+    <h1>Moonphase Companion</h1>
+    <div class="tzline" id="tzline"></div>
+  </header>
+
+  <section aria-label="Watch face with live time">
+    <div class="section-head">The Time</div>
+    <div class="toggle" role="group" aria-label="Case shape">
+      <button id="btnRound" class="active" type="button">Round</button>
+      <span class="sep" aria-hidden="true">&middot;</span>
+      <button id="btnSquare" type="button">Square</button>
+    </div>
+
+    <svg id="watchSvg" viewBox="0 0 440 440" role="img" aria-label="Analog watch face showing the current local time">
+      <defs>
+        <radialGradient id="dialGrad" cx="50%" cy="40%" r="78%">
+          <stop offset="0%" stop-color="#1b2d57"/>
+          <stop offset="55%" stop-color="#101d3c"/>
+          <stop offset="100%" stop-color="#050a16"/>
+        </radialGradient>
+        <linearGradient id="goldGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#f4dfa0"/>
+          <stop offset="50%" stop-color="#d4af5e"/>
+          <stop offset="100%" stop-color="#96742f"/>
+        </linearGradient>
+        <linearGradient id="caseGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#e9d091"/>
+          <stop offset="45%" stop-color="#b18c42"/>
+          <stop offset="100%" stop-color="#755720"/>
+        </linearGradient>
+      </defs>
+
+      <g id="caseRound">
+        <circle cx="220" cy="220" r="216" fill="url(#caseGrad)"/>
+        <circle cx="220" cy="220" r="202" fill="#0a1120"/>
+        <circle cx="220" cy="220" r="197" fill="url(#dialGrad)"/>
+      </g>
+      <g id="caseSquare" style="display:none">
+        <rect x="4" y="4" width="432" height="432" rx="88" fill="url(#caseGrad)"/>
+        <rect x="18" y="18" width="404" height="404" rx="76" fill="#0a1120"/>
+        <rect x="23" y="23" width="394" height="394" rx="72" fill="url(#dialGrad)"/>
+      </g>
+
+      <g id="ticks"></g>
+      <g id="markers"></g>
+
+      <g id="dateWin">
+        <rect x="352" y="204" width="46" height="32" rx="4" fill="#081020" stroke="url(#goldGrad)" stroke-width="1.4"/>
+        <text id="dateNum" x="375" y="227" text-anchor="middle"
+              font-family="system-ui,'Helvetica Neue',sans-serif" font-size="21"
+              font-weight="500" fill="#dfe4ee" style="font-variant-numeric:tabular-nums">1</text>
+      </g>
+
+      <g id="hourHand">
+        <rect x="-6" y="-110" width="12" height="128" rx="6" fill="url(#goldGrad)"/>
+      </g>
+      <g id="minuteHand">
+        <rect x="-4.5" y="-162" width="9" height="184" rx="4.5" fill="url(#goldGrad)"/>
+      </g>
+      <g id="secondHand">
+        <line x1="0" y1="30" x2="0" y2="-176" stroke="#e8c777" stroke-width="2.4"/>
+        <circle cx="0" cy="24" r="6.5" fill="#e8c777"/>
+      </g>
+      <circle cx="220" cy="220" r="6.5" fill="url(#goldGrad)" stroke="#0a1120" stroke-width="1.5"/>
+    </svg>
+
+    <div class="digital">
+      <div class="dateline" id="dateline">&mdash;</div>
+      <div class="timeline" id="timeline">--:--:--</div>
+    </div>
+  </section>
+
+  <section aria-label="Current moonphase">
+    <div class="section-head">The Moon</div>
+
+    <svg id="moonSvg" viewBox="0 0 520 330" role="img" aria-label="Moonphase aperture showing the current phase of the moon">
+      <defs>
+        <radialGradient id="skyGrad" cx="50%" cy="105%" r="95%">
+          <stop offset="0%" stop-color="#13224a"/>
+          <stop offset="60%" stop-color="#0a1330"/>
+          <stop offset="100%" stop-color="#04070f"/>
+        </radialGradient>
+        <radialGradient id="moonGrad" cx="38%" cy="34%" r="75%">
+          <stop offset="0%" stop-color="#f8ecc0"/>
+          <stop offset="55%" stop-color="#ddb96c"/>
+          <stop offset="100%" stop-color="#a37c31"/>
+        </radialGradient>
+        <clipPath id="apClip">
+          <path d="M60 292 A200 200 0 0 1 460 292 Z"/>
+        </clipPath>
+      </defs>
+
+      <g clip-path="url(#apClip)">
+        <rect x="55" y="85" width="410" height="212" fill="url(#skyGrad)"/>
+        <g id="stars"></g>
+        <g id="moonG">
+          <circle r="56" fill="url(#moonGrad)"/>
+          <circle cx="-14" cy="-8" r="9" fill="#8a6a2c" opacity="0.22"/>
+          <circle cx="12" cy="14" r="7" fill="#8a6a2c" opacity="0.2"/>
+          <circle cx="17" cy="-19" r="5" fill="#8a6a2c" opacity="0.18"/>
+          <circle cx="-9" cy="21" r="4.5" fill="#8a6a2c" opacity="0.18"/>
+        </g>
+        <circle cx="130" cy="304" r="76" fill="#0d1526" stroke="url(#goldGrad)" stroke-width="2"/>
+        <circle cx="390" cy="304" r="76" fill="#0d1526" stroke="url(#goldGrad)" stroke-width="2"/>
+        <path d="M60 292 A200 200 0 0 1 460 292 Z" fill="none" stroke="#000" stroke-opacity="0.4" stroke-width="10"/>
+      </g>
+      <path d="M60 292 A200 200 0 0 1 460 292 Z" fill="none" stroke="url(#goldGrad)" stroke-width="3"/>
+    </svg>
+
+    <dl class="stats">
+      <div><dt>Phase</dt><dd id="phaseName">&mdash;</dd></div>
+      <div><dt>Illumination</dt><dd id="illumVal">&mdash;</dd></div>
+      <div><dt>Moon age</dt><dd id="ageVal">&mdash;</dd></div>
+      <div><dt>Next full moon</dt><dd id="nextFull">&mdash;</dd></div>
+    </dl>
+
+    <p class="setting" id="settingNote">
+      To set your moonphase: advance the corrector until the moon sits full in the
+      aperture, then press it once per full day since the last full moon &mdash;
+      <strong id="pressCount">&hellip;</strong> today. Finish by setting the hands to the
+      readout above; the next new moon falls on <strong id="nextNew">&hellip;</strong>.
+    </p>
+  </section>
+
+  <footer>
+    Lunar position computed from a low-precision ephemeris (Meeus), accurate to within
+    a few hours &mdash; more than enough to set a mechanical moonphase.
+  </footer>
+</main>
+
+<script>
+(function(){
+  "use strict";
+  var RAD = Math.PI/180;
+  var SYNODIC = 29.530588853;
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---------- lunar phase (Meeus low-precision) ---------- */
+  function moonData(date){
+    var D = date.getTime()/86400000 - 10957.5; /* days since J2000.0 */
+    var Ms = (357.529 + 0.98560028*D)*RAD;                 /* sun mean anomaly */
+    var ls = 280.459 + 0.98564736*D                        /* sun ecliptic longitude */
+           + 1.915*Math.sin(Ms) + 0.020*Math.sin(2*Ms);
+    var Mm = (134.963 + 13.064993*D)*RAD;                  /* moon mean anomaly */
+    var lm = 218.316 + 13.176396*D + 6.289*Math.sin(Mm);   /* moon ecliptic longitude */
+    var e = ((lm - ls) % 360 + 360) % 360;                 /* elongation, deg */
+    return {
+      phase: e/360,                       /* 0 = new, 0.5 = full */
+      illum: (1 - Math.cos(e*RAD))/2
+    };
+  }
+  function nextPhaseDate(target){
+    var t = Date.now();
+    var p = moonData(new Date(t)).phase;
+    t += (((target - p) % 1 + 1) % 1) * SYNODIC * 86400000;
+    for (var i = 0; i < 5; i++){
+      var pp = moonData(new Date(t)).phase;
+      var err = (((pp - target + 0.5) % 1 + 1) % 1) - 0.5;
+      t -= err * SYNODIC * 86400000;
+    }
+    return new Date(t);
+  }
+  function phaseLabel(p){
+    var names = ["New Moon","Waxing Crescent","First Quarter","Waxing Gibbous",
+                 "Full Moon","Waning Gibbous","Last Quarter","Waning Crescent"];
+    return names[Math.floor(((p + 1/16) % 1) * 8)];
+  }
+
+  /* ---------- watch face: chapter ring & markers ---------- */
+  var NS = "http://www.w3.org/2000/svg";
+  var C = 220;
+  function el(name, attrs, parent){
+    var n = document.createElementNS(NS, name);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    parent.appendChild(n);
+    return n;
+  }
+  var ticks = document.getElementById("ticks");
+  for (var i = 0; i < 60; i++){
+    var a = i*6*RAD, hour = i % 5 === 0;
+    var r1 = hour ? 179 : 186, r2 = 193;
+    el("line", {
+      x1: C + r1*Math.sin(a), y1: C - r1*Math.cos(a),
+      x2: C + r2*Math.sin(a), y2: C - r2*Math.cos(a),
+      stroke: hour ? "url(#goldGrad)" : "#5a6379",
+      "stroke-width": hour ? 3 : 1
+    }, ticks);
+  }
+  var markers = document.getElementById("markers");
+  for (var h = 0; h < 12; h++){
+    if (h === 3) continue; /* date window lives at 3 o'clock */
+    var deg = h*30;
+    if (h === 0){
+      el("rect",{x:C-9.5,y:C-181,width:8,height:32,rx:1.5,fill:"url(#goldGrad)",
+                 transform:"rotate("+deg+" "+C+" "+C+")"},markers);
+      el("rect",{x:C+1.5,y:C-181,width:8,height:32,rx:1.5,fill:"url(#goldGrad)",
+                 transform:"rotate("+deg+" "+C+" "+C+")"},markers);
+    } else {
+      el("rect",{x:C-4,y:C-181,width:8,height:32,rx:1.5,fill:"url(#goldGrad)",
+                 transform:"rotate("+deg+" "+C+" "+C+")"},markers);
+    }
+  }
+
+  /* ---------- star field (seeded, Patek-style gold stars) ---------- */
+  function mulberry32(a){
+    return function(){
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function starPath(cx, cy, r){
+    var p = "";
+    for (var i = 0; i < 10; i++){
+      var ang = -Math.PI/2 + i*Math.PI/5;
+      var rr = i % 2 ? r*0.42 : r;
+      p += (i ? "L" : "M") + (cx+rr*Math.cos(ang)).toFixed(1) + "," + (cy+rr*Math.sin(ang)).toFixed(1);
+    }
+    return p + "Z";
+  }
+  var rnd = mulberry32(20260714);
+  var starsG = document.getElementById("stars");
+  var placed = 0, guard = 0;
+  while (placed < 26 && guard < 600){
+    guard++;
+    var sx = 70 + rnd()*380, sy = 100 + rnd()*180;
+    if (Math.hypot(sx-260, sy-292) > 188) continue;
+    if (Math.hypot(sx-130, sy-304) < 88 || Math.hypot(sx-390, sy-304) < 88) continue;
+    var node;
+    if (rnd() < 0.72){
+      node = el("path", {d: starPath(sx, sy, 3 + rnd()*4), fill: "#e8c777"}, starsG);
+    } else {
+      node = el("circle", {cx: sx, cy: sy, r: (0.9 + rnd()*0.9).toFixed(2), fill: "#e8c777"}, starsG);
+    }
+    var o = (0.55 + rnd()*0.45).toFixed(2);
+    node.setAttribute("class", "twinkle");
+    node.setAttribute("style", "--o:" + o + ";opacity:" + o + ";animation-delay:-" + (rnd()*3.6).toFixed(2) + "s");
+    placed++;
+  }
+
+  /* ---------- moon position: disc travels its arc behind the humps ---------- */
+  var moonG = document.getElementById("moonG");
+  var fmtDay = new Intl.DateTimeFormat(undefined, {weekday:"short", day:"numeric", month:"short"});
+  function updateMoon(now){
+    var md = moonData(now);
+    var th = Math.PI * (1 - md.phase);
+    var mx = 260 + 130*Math.cos(th);
+    var my = 292 - 130*Math.sin(th);
+    moonG.setAttribute("transform", "translate(" + mx.toFixed(2) + " " + my.toFixed(2) + ")");
+
+    document.getElementById("phaseName").textContent = phaseLabel(md.phase);
+    document.getElementById("illumVal").textContent = (md.illum*100).toFixed(md.illum < 0.095 ? 1 : 0) + "%";
+    var age = md.phase * SYNODIC;
+    document.getElementById("ageVal").innerHTML = age.toFixed(1) + " <small>days</small>";
+    document.getElementById("nextFull").textContent = fmtDay.format(nextPhaseDate(0.5));
+    document.getElementById("nextNew").textContent = fmtDay.format(nextPhaseDate(0));
+
+    var sinceFull = ((md.phase - 0.5) % 1 + 1) % 1 * SYNODIC;
+    var presses = Math.floor(sinceFull);
+    document.getElementById("pressCount").textContent =
+      presses === 0 ? "no presses" : presses + (presses === 1 ? " press" : " presses");
+  }
+
+  /* ---------- timezone header ---------- */
+  (function(){
+    var zone = "Local time";
+    try { zone = Intl.DateTimeFormat().resolvedOptions().timeZone.replace(/_/g, " "); } catch(e){}
+    var off = -new Date().getTimezoneOffset();
+    var sign = off >= 0 ? "+" : "\u2212"; off = Math.abs(off);
+    var gmt = "GMT" + sign + String(Math.floor(off/60)).padStart(2,"0") + ":" + String(off%60).padStart(2,"0");
+    document.getElementById("tzline").textContent = zone + " \u00B7 " + gmt;
+  })();
+
+  /* ---------- live clock ---------- */
+  var hourHand = document.getElementById("hourHand");
+  var minuteHand = document.getElementById("minuteHand");
+  var secondHand = document.getElementById("secondHand");
+  var fmtDate = new Intl.DateTimeFormat(undefined, {weekday:"long", day:"numeric", month:"long", year:"numeric"});
+  var fmtTime = new Intl.DateTimeFormat(undefined, {hour:"2-digit", minute:"2-digit", second:"2-digit"});
+  var lastSec = -1, lastMin = -1;
+
+  function frame(){
+    var now = new Date();
+    var s = now.getSeconds() + (reduced ? 0 : now.getMilliseconds()/1000);
+    var m = now.getMinutes() + s/60;
+    var h = (now.getHours() % 12) + m/60;
+    hourHand.setAttribute("transform", "translate(220 220) rotate(" + (h*30).toFixed(3) + ")");
+    minuteHand.setAttribute("transform", "translate(220 220) rotate(" + (m*6).toFixed(3) + ")");
+    secondHand.setAttribute("transform", "translate(220 220) rotate(" + (s*6).toFixed(3) + ")");
+
+    if (now.getSeconds() !== lastSec){
+      lastSec = now.getSeconds();
+      document.getElementById("dateline").textContent = fmtDate.format(now);
+      document.getElementById("timeline").textContent = fmtTime.format(now);
+      document.getElementById("dateNum").textContent = now.getDate();
+      if (now.getMinutes() !== lastMin){
+        lastMin = now.getMinutes();
+        updateMoon(now);
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+  updateMoon(new Date());
+  requestAnimationFrame(frame);
+  document.addEventListener("visibilitychange", function(){
+    if (!document.hidden) updateMoon(new Date());
+  });
+
+  /* ---------- case shape toggle ---------- */
+  var btnRound = document.getElementById("btnRound");
+  var btnSquare = document.getElementById("btnSquare");
+  function setShape(shape){
+    var round = shape !== "square";
+    document.getElementById("caseRound").style.display = round ? "" : "none";
+    document.getElementById("caseSquare").style.display = round ? "none" : "";
+    btnRound.classList.toggle("active", round);
+    btnSquare.classList.toggle("active", !round);
+    try { localStorage.setItem("watchShape", round ? "round" : "square"); } catch(e){}
+  }
+  btnRound.addEventListener("click", function(){ setShape("round"); });
+  btnSquare.addEventListener("click", function(){ setShape("square"); });
+  try { if (localStorage.getItem("watchShape") === "square") setShape("square"); } catch(e){}
+})();
+</script>
+</body>
+</html>
