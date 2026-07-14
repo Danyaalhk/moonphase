@@ -92,6 +92,38 @@
   .toggle button:focus-visible{outline:1px solid var(--gold);outline-offset:4px;}
   .toggle .sep{color:var(--gold-deep);font-size:.72rem;}
 
+  .timeset{display:flex;flex-direction:column;align-items:center;gap:14px;}
+  .manual-controls{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;}
+  .manual-controls[hidden]{display:none;}
+  .manual-controls input{
+    color-scheme:dark;
+    background:#0a1223;
+    border:1px solid var(--hairline);
+    border-radius:6px;
+    color:var(--ink);
+    font-family:var(--digits);
+    font-variant-numeric:tabular-nums;
+    font-size:.9rem;
+    padding:8px 10px;
+  }
+  .manual-controls input:focus-visible{outline:1px solid var(--gold);outline-offset:2px;}
+  .step{
+    appearance:none;
+    background:none;
+    border:1px solid var(--hairline);
+    border-radius:6px;
+    color:var(--gold);
+    font-family:var(--body);
+    font-size:.66rem;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    padding:9px 12px;
+    cursor:pointer;
+  }
+  .step:hover{border-color:var(--gold);}
+  .step:focus-visible{outline:1px solid var(--gold);outline-offset:2px;}
+  .digital.manual .dateline{color:var(--gold);}
+
   #watchSvg{width:min(86vw,440px);height:auto;display:block;filter:drop-shadow(0 22px 44px rgba(0,0,0,.55));}
   #moonSvg{width:min(92vw,520px);height:auto;display:block;filter:drop-shadow(0 18px 40px rgba(0,0,0,.5));}
 
@@ -236,6 +268,19 @@
       <div class="dateline" id="dateline">&mdash;</div>
       <div class="timeline" id="timeline">--:--:--</div>
     </div>
+
+    <div class="timeset">
+      <div class="toggle" role="group" aria-label="Time source">
+        <button id="btnLive" class="active" type="button">Live</button>
+        <span class="sep" aria-hidden="true">&middot;</span>
+        <button id="btnManual" type="button">Set manually</button>
+      </div>
+      <div class="manual-controls" id="manualControls" hidden>
+        <button id="dayMinus" class="step" type="button" aria-label="Back one day">&minus;1 day</button>
+        <input id="manualInput" type="datetime-local" aria-label="Manual date and time">
+        <button id="dayPlus" class="step" type="button" aria-label="Forward one day">+1 day</button>
+      </div>
+    </div>
   </section>
 
   <section aria-label="Current moonphase">
@@ -285,7 +330,7 @@
     <p class="setting" id="settingNote">
       To set your moonphase: advance the corrector until the moon sits full in the
       aperture, then press it once per full day since the last full moon &mdash;
-      <strong id="pressCount">&hellip;</strong> today. Finish by setting the hands to the
+      <strong id="pressCount">&hellip;</strong> <span id="pressWhen">today</span>. Finish by setting the hands to the
       readout above; the next new moon falls on <strong id="nextNew">&hellip;</strong>.
     </p>
   </section>
@@ -302,6 +347,7 @@
   var RAD = Math.PI/180;
   var SYNODIC = 29.530588853;
   var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var manualDate = null; /* Date when the user has pinned a moment; null = live */
 
   /* ---------- lunar phase (Meeus low-precision) ---------- */
   function moonData(date){
@@ -317,8 +363,8 @@
       illum: (1 - Math.cos(e*RAD))/2
     };
   }
-  function nextPhaseDate(target){
-    var t = Date.now();
+  function nextPhaseDate(target, fromMs){
+    var t = fromMs;
     var p = moonData(new Date(t)).phase;
     t += (((target - p) % 1 + 1) % 1) * SYNODIC * 86400000;
     for (var i = 0; i < 5; i++){
@@ -421,8 +467,9 @@
     document.getElementById("illumVal").textContent = (md.illum*100).toFixed(md.illum < 0.095 ? 1 : 0) + "%";
     var age = md.phase * SYNODIC;
     document.getElementById("ageVal").innerHTML = age.toFixed(1) + " <small>days</small>";
-    document.getElementById("nextFull").textContent = fmtDay.format(nextPhaseDate(0.5));
-    document.getElementById("nextNew").textContent = fmtDay.format(nextPhaseDate(0));
+    document.getElementById("nextFull").textContent = fmtDay.format(nextPhaseDate(0.5, now.getTime()));
+    document.getElementById("nextNew").textContent = fmtDay.format(nextPhaseDate(0, now.getTime()));
+    document.getElementById("pressWhen").textContent = manualDate ? "on that date" : "today";
 
     var sinceFull = ((md.phase - 0.5) % 1 + 1) % 1 * SYNODIC;
     var presses = Math.floor(sinceFull);
@@ -448,9 +495,8 @@
   var fmtTime = new Intl.DateTimeFormat(undefined, {hour:"2-digit", minute:"2-digit", second:"2-digit"});
   var lastSec = -1, lastMin = -1;
 
-  function frame(){
-    var now = new Date();
-    var s = now.getSeconds() + (reduced ? 0 : now.getMilliseconds()/1000);
+  function render(now){
+    var s = now.getSeconds() + ((reduced || manualDate) ? 0 : now.getMilliseconds()/1000);
     var m = now.getMinutes() + s/60;
     var h = (now.getHours() % 12) + m/60;
     hourHand.setAttribute("transform", "translate(220 220) rotate(" + (h*30).toFixed(3) + ")");
@@ -459,7 +505,8 @@
 
     if (now.getSeconds() !== lastSec){
       lastSec = now.getSeconds();
-      document.getElementById("dateline").textContent = fmtDate.format(now);
+      document.getElementById("dateline").textContent =
+        (manualDate ? "Showing: " : "") + fmtDate.format(now);
       document.getElementById("timeline").textContent = fmtTime.format(now);
       document.getElementById("dateNum").textContent = now.getDate();
       if (now.getMinutes() !== lastMin){
@@ -467,12 +514,15 @@
         updateMoon(now);
       }
     }
+  }
+  function frame(){
+    render(manualDate || new Date());
     requestAnimationFrame(frame);
   }
-  updateMoon(new Date());
+  render(new Date());
   requestAnimationFrame(frame);
   document.addEventListener("visibilitychange", function(){
-    if (!document.hidden) updateMoon(new Date());
+    if (!document.hidden) updateMoon(manualDate || new Date());
   });
 
   /* ---------- case shape toggle ---------- */
@@ -489,6 +539,47 @@
   btnRound.addEventListener("click", function(){ setShape("round"); });
   btnSquare.addEventListener("click", function(){ setShape("square"); });
   try { if (localStorage.getItem("watchShape") === "square") setShape("square"); } catch(e){}
+
+  /* ---------- manual date & time override ---------- */
+  var btnLive = document.getElementById("btnLive");
+  var btnManual = document.getElementById("btnManual");
+  var manualControls = document.getElementById("manualControls");
+  var manualInput = document.getElementById("manualInput");
+  var digitalBox = document.querySelector(".digital");
+  function pad2(n){ return (n < 10 ? "0" : "") + n; }
+  function toLocalInput(d){
+    return d.getFullYear() + "-" + pad2(d.getMonth()+1) + "-" + pad2(d.getDate()) +
+           "T" + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+  }
+  function applyManual(d){
+    manualDate = d;
+    manualControls.hidden = false;
+    btnManual.classList.add("active");
+    btnLive.classList.remove("active");
+    digitalBox.classList.add("manual");
+    manualInput.value = toLocalInput(d);
+    lastSec = -1; lastMin = -1; /* force full redraw on next frame */
+  }
+  function goLive(){
+    manualDate = null;
+    manualControls.hidden = true;
+    btnLive.classList.add("active");
+    btnManual.classList.remove("active");
+    digitalBox.classList.remove("manual");
+    lastSec = -1; lastMin = -1;
+  }
+  btnManual.addEventListener("click", function(){ applyManual(new Date()); });
+  btnLive.addEventListener("click", goLive);
+  manualInput.addEventListener("change", function(){
+    var d = new Date(manualInput.value);
+    if (!isNaN(d.getTime())) applyManual(d);
+  });
+  document.getElementById("dayMinus").addEventListener("click", function(){
+    applyManual(new Date((manualDate || new Date()).getTime() - 86400000));
+  });
+  document.getElementById("dayPlus").addEventListener("click", function(){
+    applyManual(new Date((manualDate || new Date()).getTime() + 86400000));
+  });
 })();
 </script>
 </body>
